@@ -16,6 +16,7 @@
     - postgresql-client
     - python-psycopg2
     - ruby-pg
+    - thin
 
 - name: Create database user in postgres
   become: yes
@@ -97,13 +98,19 @@
    chdir: "{{ redmine_path }}"
   when: not update and redmine_load_default_data|default(false)
 
-- name: Clean up
+- name: Clean up Cache
   shell: bundle exec rake tmp:cache:clear
   args:
     chdir: "{{ redmine_path }}"
+
+- name: Clean up Sessions
   shell: bundle exec rake tmp:sessions:clear
   args:
     chdir: "{{ redmine_path }}"
+
+- name: Configure Thin
+  template: src=redmine.yaml.j2 dest="/etc/thin2.3/redmine.yaml"
+  when: nginx
 
 - name: Configure NGINX reverse proxy
   copy: src=proxy dest="{{ redmine_proxy }}"
@@ -111,8 +118,8 @@
 
 - name: Configure SSL site
   template: src=site-ssl.j2 dest="/etc/nginx/sites-available/redmine"
-  when: nginx
+  when: nginx and redmine_ssl
 
 - name: Configure non-SSL site
   template: src=site-nossl.j2 dest="/etc/nginx/sites-available/redmine"
-  when: nginx
+  when: nginx and not redmine_ssl
