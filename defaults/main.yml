@@ -4,6 +4,8 @@ db_name: "redmine"
 #db_username: "admin"
 #db_password: "unaContrasenia"
 
+db_type: postgresql
+# db_type: mysql
 
 mysql_port: 3306
 #mysql_bind_addres: "0.0.0.0"

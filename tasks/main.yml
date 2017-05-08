@@ -12,27 +12,47 @@
     - libpq-dev
     - libmagickwand-dev
     - libsqlite3-dev
+    - postgresql
+    - postgresql-client
+    - python-psycopg2
+    - ruby-pg
+
+- name: Create database user in postgres
+  become: yes
+  become_user: postgres
+  postgresql_user: name='{{ db_username }}' password='{{ db_password }}'
+  when: not update and db_type == 'postgresql'
+
+- name: Create database in postgres
+  become: yes
+  become_user: postgres
+  postgresql_db: name={{ db_name }} owner={{ db_username }} template='template0' encoding='UTF-8'
+  when: not update and db_type == 'postgresql'
 
 - name: Backup database
   mysql_db: name="{{ db_name }}" login_host="{{ db_host }}" \
             login_user="{{ db_username }}" \
             login_password="{{ db_password }}" \
             state=dump target="{{ target_dump }}"
-  when: update
-    
+  when: update and db_type == 'mysql'
+
 - name: Clone repository
   git: repo=https://github.com/redmine/redmine.git dest="{{ redmine_path }}" version='{{ redmine_version }}' accept_hostkey=yes
 
-- name: Config database
-  template: src=database.yml.j2 dest="{{ redmine_path }}/config/database.yml"
-  when: not update
-  
+- name: Config MySQL database
+  template: src=database-mysql.yml.j2 dest="{{ redmine_path }}/config/database.yml"
+  when: not update and db_type == 'mysql'
+
+- name: Config PostgreSQL database
+  template: src=database-postgres.yml.j2 dest="{{ redmine_path }}/config/database.yml"
+  when: not update and db_type == 'postgresql'
+
 - name: Install Bundler
   shell: "gem install bundler"
   args:
     chdir: "{{ redmine_path }}"
   when: not update
-  
+
 - name: Update Dependencies
   shell: bundle update
   args:
@@ -40,7 +60,7 @@
   when: update
 
 - name: Migrate database
-  shell: bundle exec rake db:migrate RAILS_ENV=production 
+  shell: bundle exec rake db:migrate RAILS_ENV=production
   args:
     chdir: "{{ redmine_path }}"
   when: update
@@ -50,27 +70,27 @@
   args:
     chdir: "{{ redmine_path }}"
   when: update
-  
+
 - name: Dependencies installation
   shell: bundle install --without development test
   args:
     chdir: "{{ redmine_path }}"
   when: not update
-  
+
 - name: Session store secret generation
   shell: rake generate_secret_token
   args:
    chdir: "{{ redmine_path }}"
    creates: "{{ redmine_path }}/config/initializers/secret_token.rb"
   when: not update
-  
+
 # rails migrations are (supposed to be) idempotent
 - name: Database schema objects creation
   shell: RAILS_ENV=production rake db:migrate
   args:
    chdir: "{{ redmine_path }}"
   when: not update
-  
+
 - name: Database default data set
   shell: RAILS_ENV=production REDMINE_LANG="{{ redmine_lang }}" rake redmine:load_default_data
   args:
