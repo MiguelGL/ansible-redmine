@@ -1,0 +1,29 @@
+# Upstream Ruby process cluster for load balancing
+upstream thin_cluster {
+    server unix:/tmp/thin.0.sock;
+    server unix:/tmp/thin.1.sock;
+    server unix:/tmp/thin.2.sock;
+    server unix:/tmp/thin.3.sock;
+}
+
+server {
+    listen 80;
+
+    server_name  {{ redmine_domain }};
+
+    access_log  /var/log/nginx/redmine/access.log;
+    error_log   /var/log/nginx/redmine/error.log;
+
+    include {{ redmine_proxy }};
+    root {{ redmine_public }};
+    proxy_redirect off;
+
+    location / {
+        try_files $uri/index.html $uri.html $uri @cluster;
+    }
+
+    location @cluster {
+        proxy_pass http://thin_cluster;
+    }
+}
+

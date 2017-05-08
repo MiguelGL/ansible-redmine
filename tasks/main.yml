@@ -105,11 +105,14 @@
   args:
     chdir: "{{ redmine_path }}"
 
-
-- name: Copiar Proxy
+- name: Configure NGINX reverse proxy
   copy: src=proxy dest="{{ redmine_proxy }}"
   when: nginx
 
-- name: Configurar sitio
-  template: src=site.j2 dest="/etc/nginx/sites-available/redmine"
+- name: Configure SSL site
+  template: src=site-ssl.j2 dest="/etc/nginx/sites-available/redmine"
+  when: nginx
+
+- name: Configure non-SSL site
+  template: src=site-nossl.j2 dest="/etc/nginx/sites-available/redmine"
   when: nginx

@@ -29,9 +29,10 @@ redmine_version: "3.1.7"
 target_dump: "/opt/redmine.sql.bz2"
 target_files: "/opt/redmine.tar.bz2"
 
+redmine_ssl: true
+
 ssl_cert: "/etc/ssl/local/server.crt"
 ssl_key: "/etc/ssl/local/server.key"
-
 
 update: false
 nginx: false
